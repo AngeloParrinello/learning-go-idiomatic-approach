@@ -58,6 +58,33 @@ func makeMult(base int) func(int) int {
 	}
 }
 
+type person struct {
+	name string
+	age  int
+}
+
+func modifyFails(i int, s string, p person) {
+	i = i * 2
+	s = "Goodbye "
+	p.name = "Bob"
+
+	fmt.Println("Inside modifyFails:", i, s, p)
+}
+
+func modMap(m map[int]string) {
+	m[2] = "hello"
+	m[3] = "goodbye"
+	delete(m, 1)
+}
+
+func modSlice(s []int) {
+	for k, v := range s {
+		s[k] = v * 2
+	}
+
+	s = append(s, 10)
+}
+
 func main() {
 	fmt.Println(addTo(3))
 	fmt.Println(addTo(3, 2))
@@ -188,4 +215,28 @@ func main() {
 		log.Fatal(err)
 	}
 	defer closer()
+
+	// Go is a Call by Value language, which means that when you pass a variable to a function, you are passing a copy of the variable's value.
+	p := person{}
+	i := 2
+	s := "Hello "
+	fmt.Println("Before modifyFails:", i, s, p)
+	modifyFails(i, s, p)
+	fmt.Println("After modifyFails:", i, s, p)
+
+	//for the primitives types, the value is copied, so the changes made to i and s inside the function do not affect the original variables in main.
+
+	// but for maps and slice, the value is a reference to the underlying data structure, so changes made to the map or slice inside the function will affect the original map or slice in main.
+	m := map[int]string{
+		1: "one",
+		2: "two",
+	}
+	modMap(m)
+	// For the map is easier to explain: any changes made to a map parameter are reflected in the variable passed into the function
+	fmt.Println("After modMap:", m)
+
+	slice := []int{1, 2, 3, 4}
+
+	modSlice(slice)
+	fmt.Println("After modSlice:", slice)
 }
