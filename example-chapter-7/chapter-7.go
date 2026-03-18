@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"time"
 )
 
@@ -134,6 +137,33 @@ func (c Client) Program() {
 //Now the exact same code that was reading from an uncompressed file is reading from
 //a compressed file instead.
 
+// Rule of thumb, ACCEPT INTERFACE, RETURN STRUCTS
+
+// When an interface could be one of multiple possible types, use a type switch instead:
+func doThings(i interface{}) {
+	// Instead of specifying a boolean operation, you specify a variable of an
+	// interface type and follow it with .(type).
+	// Since the purpose of a type switch is to derive a new variable from
+	// an existing one, it is idiomatic to assign the variable being switched
+	// on to a variable of the same name (i := i.(type)), making this
+	// one of the few places where shadowing is a good idea. To make the
+	// comments more readable, our example doesn’t use shadowing.
+	switch j := i.(type) {
+	case nil:
+		fmt.Println(j)
+	// i is nil, type of j is interface{}
+	case int:
+	// j is of type int
+	case io.Reader:
+	// j is of type io.Reader
+	case string:
+	// j is a string
+	case bool, rune:
+	// i is either a bool or rune, so j is of type interface{}
+	default:
+		// no idea what i is, so j is of type interface{}
+	}
+}
 func main() {
 
 	p := Person{FirstName: "Alice", LastName: "Smith", Age: 30}
@@ -159,5 +189,69 @@ func main() {
 		L: LogicProvider{}, // here we did not use Logic but LogicProvider!
 	}
 	client.Program()
+
+	var s *string
+	fmt.Println(s == nil) // true
+	var y interface{}
+	fmt.Println(y == nil) // true
+	y = s
+	fmt.Println(y == nil) // false
+	// In the Go runtime, interfaces are implemented as a pair of pointers, one to the under‐
+	// lying type and one to the underlying value. As long as the type is non-nil, the inter‐
+	// face is non-nil.
+
+	// you need a way to say that a variable could
+	// store a value of any type. Go uses interface{}
+	// An empty interface type
+	// simply states that the variable can store any value whose type implements zero or
+	// more methods.
+	var i interface{}
+	i = 20
+	i = "hello"
+	i = struct {
+		FirstName string
+		LastName  string
+	}{"Fred", "Fredson"}
+	fmt.Println(i)
+
+	// One common use of the empty interface is as a placeholder for data of uncertain
+	// schema that’s read from an external source, like a JSON file:
+	// one set of braces for the interface{} type,
+	// the other to instantiate an instance of the map
+	data := map[string]interface{}{}
+	contents, err := os.ReadFile("testdata/sample.json")
+	if err != nil {
+		return
+	}
+	fmt.Println(string(contents))
+	fmt.Println(data)
+	json.Unmarshal(contents, &data)
+
+	// If you see a function that takes in an empty interface, it’s likely that it is using reflection
+	// to either populate or read the value.
+
+	// These situations should be relatively rare. Avoid using interface{}. As we’ve seen,
+	// Go is designed as a strongly typed language and attempts to work around this are
+	// unidiomatic.
+
+	// A type assertion names the concrete type that implemented the interface,
+	// or names another interface that is also implemented by the concrete type underlying
+	// the interface.
+	type MyInt int
+	var z interface{}
+	var mine MyInt = 20
+	z = mine
+	i2, ok := z.(MyInt) // i2 is of type MyInt
+	// comma ok Idiom
+	if !ok {
+		fmt.Println("not a MyInt")
+	}
+	fmt.Println(i2 + 1)
+	// A type assertion is very different from a type conversion. Type conversions
+	// can be applied to both concrete types and interfaces and
+	// are checked at compilation time. Type assertions can only be
+	// applied to interface types and are checked at runtime. Because they
+	// are checked at runtime, they can fail. Conversions change,
+	// assertions reveal.
 
 }
