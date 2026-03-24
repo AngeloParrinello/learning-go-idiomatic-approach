@@ -164,6 +164,49 @@ func doThings(i interface{}) {
 		// no idea what i is, so j is of type interface{}
 	}
 }
+
+func LogOutput(message string) {
+	fmt.Println(message)
+}
+
+type SimpleDataStore struct {
+	userData map[string]string
+}
+
+func (sds SimpleDataStore) UserNameForId(userID string) (string, bool) {
+	name, ok := sds.userData[userID]
+	return name, ok
+}
+
+func NewSimpleDataStore() SimpleDataStore {
+	return SimpleDataStore{
+		userData: map[string]string{
+			"1": "Fred",
+			"2": "Bob",
+			"3": "Jim",
+		},
+	}
+}
+
+// We don't want to force our business logic to depend on LogOutput or SimpleDataStore, because we might want to use a different logger or data store
+// later on. What our business logic needs are interfaces to describe what it depends on:
+
+type DataStore interface {
+	UserNameForId(string) (string, bool)
+}
+
+type Logger interface {
+	Log(message string)
+}
+
+// To make our LogOutput function meet this interface, we define a function type with a
+// method on it:
+type LoggerAdapter func(message string)
+
+func (lg LoggerAdapter) Log(message string) {
+	lg(message)
+}
+
 func main() {
 
 	p := Person{FirstName: "Alice", LastName: "Smith", Age: 30}
