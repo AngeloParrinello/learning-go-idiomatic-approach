@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"time"
 )
@@ -169,6 +171,18 @@ func LogOutput(message string) {
 	fmt.Println(message)
 }
 
+// non esiste l'ereditarietà di tipo ma comportamento
+type Handler interface {
+	ServeHTTP(http.ResponseWriter, *http.Request)
+}
+
+type HandlerFunc func(http.ResponseWriter,
+	*http.Request)
+
+func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f(w, r)
+}
+
 type SimpleDataStore struct {
 	userData map[string]string
 }
@@ -207,6 +221,90 @@ func (lg LoggerAdapter) Log(message string) {
 	lg(message)
 }
 
+type SimpleLogic struct {
+	l  Logger
+	ds DataStore
+}
+
+// We have a struct with two fields, one a Logger, the other a DataStore. There’s nothing
+// in SimpleLogic that mentions the concrete types, so there’s no dependency on
+// them.
+func (sl SimpleLogic) SayHello(userID string) (string, error) {
+	sl.l.Log("Hello " + userID)
+	name, ok := sl.ds.UserNameForId(userID)
+	if !ok {
+		return "", errors.New("User not found")
+	}
+	return "Hello " + name, nil
+}
+
+func (sl SimpleLogic) SayGoodbye(userID string) (string, error) {
+	sl.l.Log("in SayGoodbye for " + userID)
+	name, ok := sl.ds.UserNameForId(userID)
+	if !ok {
+		return "", errors.New("unknown user")
+	}
+	return "Goodbye, " + name, nil
+}
+
+// When we want a SimpleLogic instance, we call a factory function, passing in inter‐
+// faces and returning a struct:
+func NewSimpleLogic(l Logger, ds DataStore) SimpleLogic {
+	return SimpleLogic{
+		l:  l,
+		ds: ds,
+	}
+}
+
+// let's create our controller, let's create a single endpoint
+type APILogic interface {
+	SayHello(userID string) (string, error)
+}
+
+// This method is available on our SimpleLogic struct, but once again, the concrete type
+//is not aware of the interface. Furthermore, the other method on SimpleLogic,
+//SayGoodbye, is not in the interface because our controller doesn’t care about it. The
+//interface is owned by the client code, so its method set is customized to the needs of
+//the client code:
+
+type Controller struct {
+	l     Logger
+	logic APILogic
+}
+
+func (c Controller) SayHello(w http.ResponseWriter, r *http.Request) {
+	c.l.Log("In SayHello")
+	userID := r.URL.Query().Get("user_id")
+	message, err := c.logic.SayHello(userID)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Write([]byte(message))
+}
+
+func NewController(l Logger, logic APILogic) Controller {
+	return Controller{
+		l:     l,
+		logic: logic,
+	}
+}
+
+// Again, we accept interfaces and return structs.
+
+// then in the main...
+/*
+func main() {
+l := LoggerAdapter(LogOutput)
+ds := NewSimpleDataStore()
+logic := NewSimpleLogic(l, ds)
+c := NewController(l, logic)
+http.HandleFunc("/hello", c.SayHello)
+http.ListenAndServe(":8080", nil)
+}
+*/
+// the main is the only part of the code that knows what all the concrete types
 func main() {
 
 	p := Person{FirstName: "Alice", LastName: "Smith", Age: 30}
