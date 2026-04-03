@@ -49,3 +49,49 @@ func testErrFormat() {
 		fmt.Println("Told you so")
 	}
 }
+
+// Errors are value too and we can define custom ones
+type Status int
+
+const (
+	InvalidLogin Status = iota + 1
+	NotFound
+)
+
+type StatusErr struct {
+	Status  Status
+	Message string
+}
+
+func (e StatusErr) Error() string {
+	return e.Message
+}
+
+// we always return error even though we return custom errors
+//func LoginAndGetData(uid, pwd, file string) ([]byte, error) {
+//	err := login(uid, pwd)
+//	if err != nil {
+//		return nil, StatusErr{
+//			Status:  InvalidLogin,
+//			Message: fmt.Sprintf("invalid credentials for user %s", uid),
+//		}
+//	}
+//	data, err := getData(file)
+//	if err != nil {
+//		return nil, StatusErr{
+//			Status:  NotFound,
+//			Message: fmt.Sprintf("file %s not found", file),
+//		}
+//	}
+//	return data, nil
+//}
+
+// When using custom errors, never define a variable to be of the type
+// of your custom error. Either explicitly return nil when no error
+// occurs or define the variable to be of type error.
+
+// When an error is passed back through your code, you often want to add additional
+// context to it. This context can be the name of the function that received the error or
+// the operation it was trying to perform. When you preserve an error while adding
+// additional information, it is called wrapping the error. When you have a series of
+//  wrapped errors, it is called an error chain.
