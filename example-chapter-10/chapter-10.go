@@ -85,4 +85,81 @@ func main() {
 	// select statement is the control structure for concurrency in Go, and solves the question:
 	// if you can perform two concurrent operations, which one do you do first?
 	// The select keyword allows a goroutine to read from or write to one of a set of multiple channels.
+
+	// Another advantage of select choosing at random is that it prevents one of the most
+	// common causes of deadlocks: acquiring locks in an inconsistent order. If you have
+	// two goroutines that both access the same two channels, they must be accessed in the
+	// same order in both goroutines, or they will deadlock.Another advantage of select choosing at random is that it prevents one of the most
+	// common causes of deadlocks: acquiring locks in an inconsistent order. If you have
+	// two goroutines that both access the same two channels, they must be accessed in the
+	// same order in both goroutines, or they will deadlock.
+
+	// Remember that our main is running on a goroutine that is launched at startup by the
+	// Go runtime.
+
+	// Since select is responsible for communicating over a number of channels, it is often
+	// embedded within a for loop:
+	//for {
+	//	select {
+	//	case <-done:
+	//		return
+	//	case v := <-ch:
+	//		fmt.Println(v)
+	//	}
+	//}
+	// This is so common that the combination is often referred to as a for-select loop.
+	// When using a for-select loop, you must include a way to exit the loop.
+
+	// If you want to implement a nonblocking read or write on a channel,
+	// use a select with a default. The following code does not wait if there’s no value to
+	// read in ch; it immediately executes the body of the default:
+	select {
+	case v := <-ch:
+		fmt.Println(v)
+	default:
+		fmt.Println("no value to read")
+	}
+	// Having a default case inside a for-select loop is almost always
+	// the wrong thing to do. It will be triggered every time through the
+	// loop when there’s nothing to read or write for any of the cases. This
+	// makes your for loop run constantly, which uses a great deal of CPU.
+
+	// Keep Your APIs Concurrency-Free
+	// this means that you should never expose channels or mutexes in your
+	// API’s types, functions, and methods
+
+	// Goroutines, for Loops, and Varying Variables
+	// Most of the time, the closure that you use to launch a goroutine has no parameters.
+	// There is one common situation where this doesn’t work: when trying to capture the index or value
+	// of a for loop.  This code contains a subtle bug:
+	x := []int{2, 4, 6, 8, 10}
+	ch3 := make(chan int, len(x))
+	for _, v := range x {
+		go func() {
+			ch3 <- v * 2
+		}()
+	}
+	for i := 0; i < len(x); i++ {
+		fmt.Println(<-ch3)
+	}
+	// We launch one goroutine for each value in a. It looks like we pass a different value in
+	// to each goroutine, but running the code shows something different:
+	// 20
+	// 20
+	// 20
+	// 20
+	// 20
+	// The reason why every goroutine wrote 20 to ch is that the closure for every goroutine captured the same variable.
+	// Possible solution is to pass the variable to the closure:
+	/* for _, v := range a {
+		go func(val int) {
+			ch <- val * 2
+		}(v)
+	}*/
+
+	// Always Clean Up Your Goroutines
+	// Whenever you launch a goroutine function, you must make sure that it will eventually exit.
+	// Unlike variables, the Go runtime can’t detect that a goroutine will never be used again.
+	// If a goroutine doesn’t exit, the scheduler will still periodically give it time to do nothing,
+	// which slows down your program. This is called a goroutine leak.
 }
