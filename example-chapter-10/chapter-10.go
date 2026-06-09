@@ -1,4 +1,4 @@
-package example_chapter_10
+package main
 
 import "fmt"
 
@@ -162,4 +162,44 @@ func main() {
 	// Unlike variables, the Go runtime can’t detect that a goroutine will never be used again.
 	// If a goroutine doesn’t exit, the scheduler will still periodically give it time to do nothing,
 	// which slows down your program. This is called a goroutine leak.
+
+	/*The done channel pattern provides a way to signal a goroutine that it’s time to stop
+	processing. It uses a channel to signal that it’s time to exit. Let’s look at an example
+	where we pass the same data to multiple functions, but only want the result from the
+	fastest function:The done channel pattern provides a way to signal a goroutine that it’s time to stop
+	processing. It uses a channel to signal that it’s time to exit. Let’s look at an example
+	where we pass the same data to multiple functions, but only want the result from the
+	fastest function:*/
+	// See the function searchData
+
+}
+
+func searchData(s string, searchers []func(string) []string) []string {
+	// we declare a channel named done that contains data of type
+	// struct{}. We use an empty struct for the type because the value is unimportant; we
+	// never write to this channel, only close it.
+	done := make(chan struct{})
+	result := make(chan []string)
+	for _, searcher := range searchers {
+		// We launch a goroutine for each searcher
+		// passed in. The select statements in the worker goroutines wait for either a write on
+		// the result channel (when the searcher function returns) or a read on the done
+		// channel.
+		go func(searcher func(string) []string) {
+			select {
+			// Remember that a read on an open channel pauses until there is data available
+			// and that a read on a closed channel always returns the zero value for the channel.
+			// This means that the case that reads from done will stay paused until done is closed. In
+			// searchData, we read the first value written to result, and then we close done. This
+			// signals to the goroutines that they should exit, preventing them from leaking.
+			case result <- searcher(s):
+
+			case <-done:
+			}
+		}(searcher)
+	}
+
+	r := <-result
+	close(done)
+	return r
 }
